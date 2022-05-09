@@ -4,6 +4,7 @@ import shutil
 import torch
 from pathlib import Path
 from time import time
+from typing import Union, Tuple
 
 from dotenv import load_dotenv
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -42,7 +43,7 @@ ALG_DICT = {
 
 def main(
     alg_name: str,
-    model_name: str,
+    model_name: Union[str, Tuple],
     hparams_fname: str,
     dataset_size_limit: int,
     continue_from_run: str,
@@ -89,9 +90,12 @@ def main(
 
     # Instantiate vanilla model
     print("Instantiating model")
-    model = AutoModelForCausalLM.from_pretrained(model_name).cuda()
-    tok = AutoTokenizer.from_pretrained(model_name)
-    tok.pad_token = tok.eos_token
+    if type(model_name) is str:
+        model = AutoModelForCausalLM.from_pretrained(model_name).cuda()
+        tok = AutoTokenizer.from_pretrained(model_name)
+        tok.pad_token = tok.eos_token
+    else:
+        model, tok = model_name
 
     # Iterate through dataset
     for record in ds:
@@ -149,18 +153,21 @@ if __name__ == "__main__":
         help="Editing algorithm to use. Results are saved in results/<alg_name>/<run_id>, "
         "where a new run_id is generated on each run. "
         "If continuing from previous run, specify the run_id in --continue_from_run.",
+        required=True,
     )
     parser.add_argument(
         "--model_name",
         choices=["gpt2-xl", "EleutherAI/gpt-j-6B"],
         default="gpt2-xl",
         help="Model to edit.",
+        required=True,
     )
     parser.add_argument(
         "--hparams_fname",
         type=str,
         default="gpt2-xl.json",
         help="Name of hyperparameters file, located in the hparams/<alg_name> folder.",
+        required=True,
     )
     parser.add_argument(
         "--continue_from_run",
